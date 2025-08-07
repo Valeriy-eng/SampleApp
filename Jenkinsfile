@@ -1,12 +1,23 @@
 def buildTag = ''
 
+//def buildDockerImage(tag) {
+//    withCredentials([usernamePassword(credentialsId: 'docker-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+//        sh """
+//            docker build -t sampleapp:${tag} .
+//            echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+//            docker tag sampleapp:${tag} ${DOCKER_USER}/sampleapp:${tag}
+//            docker push ${DOCKER_USER}/sampleapp:${tag}
+//        """
+//    }
+//}
+
 def buildDockerImage(tag) {
     withCredentials([usernamePassword(credentialsId: 'docker-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-        sh """
+        bat """
             docker build -t sampleapp:${tag} .
-            echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
-            docker tag sampleapp:${tag} ${DOCKER_USER}/sampleapp:${tag}
-            docker push ${DOCKER_USER}/sampleapp:${tag}
+            echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+            docker tag sampleapp:${tag} %DOCKER_USER%/sampleapp:${tag}
+            docker push %DOCKER_USER%/sampleapp:${tag}
         """
     }
 }
