@@ -66,8 +66,8 @@ pipeline {
 
                 withCredentials([file(credentialsId: 'kubeconfig-creds', variable: 'KUBECONFIG')]) {
                     script {
-                        sh """
-                            sed -i "s/IMAGE_TAG/${buildTag}/g" deployment.yaml
+                        bat """
+                            powershell -Command "(Get-Content deployment.yaml) -replace 'IMAGE_TAG', '${buildTag}' | Set-Content deployment.yaml"
                             kubectl apply -f deployment.yaml
                         """
                     }
