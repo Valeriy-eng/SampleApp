@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: sampleapp
-        image: dockeritc778/sampleapp:IMAGE_TAG
+        image: va1eriy/sampleapp:IMAGE_TAG
         imagePullPolicy: Always
         ports:
         - containerPort: 5000

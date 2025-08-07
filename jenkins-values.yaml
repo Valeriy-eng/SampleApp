@@ -1,0 +1,4 @@
+controller:
+  serviceType: NodePort
+  servicePort: 8080
+  nodePort: 32000  # You can choose a port between 30000–32767
