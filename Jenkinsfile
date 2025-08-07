@@ -1,49 +1,34 @@
 def buildTag = ''
-def imageName = 'sampleapp'
 
-// Reusable function to build and push Docker image
-def buildAndPushDockerImage(tag) {
+def buildDockerImage(tag) {
     withCredentials([usernamePassword(credentialsId: 'docker-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
         sh """
-            docker build -t ${imageName}:${tag} .
+            docker build -t sampleapp:${tag} .
             echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
-            docker tag ${imageName}:${tag} ${DOCKER_USER}/${imageName}:${tag}
-            docker push ${DOCKER_USER}/${imageName}:${tag}
-        """
-    }
-}
-
-// Reusable function to deploy to Kubernetes
-def deployToKubernetes(tag, namespace) {
-    withCredentials([file(credentialsId: 'kubeconfig-creds', variable: 'KUBECONFIG')]) {
-        sh """
-            sed -i 's|IMAGE_TAG|${tag}|g' deployment.yaml
-            sed -i 's|NAMESPACE_PLACEHOLDER|${namespace}|g' deployment.yaml
-            kubectl apply -n ${namespace} -f deployment.yaml
+            docker tag sampleapp:${tag} ${DOCKER_USER}/sampleapp:${tag}
+            docker push ${DOCKER_USER}/sampleapp:${tag}
         """
     }
 }
 
 pipeline {
-    agent { label 'deploy' }
-
-    parameters {
-        string(name: 'KUBE_NAMESPACE', defaultValue: 'default', description: 'Kubernetes namespace to deploy to')
-    }
-
-    environment {
-        IMAGE_NAME = 'sampleapp'
-    }
+    agent { label 'build-agent' }
 
     stages {
-
-        stage('Initialize Build Tag') {
+        stage('Generate Tag') {
             steps {
                 script {
-                    def date = new Date().format("yyyyMMdd")
+                    def date = new Date().format('yyyyMMdd')
                     buildTag = "${date}.${env.BUILD_NUMBER}"
-                    currentBuild.displayName = "Build-${buildTag}"
-                    echo "Generated build tag: ${buildTag}"
+                    currentBuild.displayName = buildTag
+                }
+            }
+        }
+
+        stage('Use Tag') {
+            steps {
+                script {
+                    echo "The build tag is: ${buildTag}"
                 }
             }
         }
@@ -54,18 +39,10 @@ pipeline {
             }
         }
 
-        stage('Build and Push Docker Image') {
+        stage('Build & Push Docker Image') {
             steps {
                 script {
-                    buildAndPushDockerImage(buildTag)
-                }
-            }
-        }
-
-        stage('Confirm Deployment') {
-            steps {
-                script {
-                    input message: "Proceed to deploy ${buildTag} to namespace '${params.KUBE_NAMESPACE}'?", ok: 'Deploy'
+                    buildDockerImage(buildTag)
                 }
             }
         }
@@ -73,7 +50,16 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    deployToKubernetes(buildTag, params.KUBE_NAMESPACE)
+                    input message: "Do you want to proceed with Kubernetes deployment?", ok: 'Deploy'
+                }
+
+                withCredentials([file(credentialsId: 'kubeconfig-creds', variable: 'KUBECONFIG')]) {
+                    script {
+                        sh """
+                            sed -i "s/IMAGE_TAG/${buildTag}/g" deployment.yaml
+                            kubectl apply -f deployment.yaml
+                        """
+                    }
                 }
             }
         }
